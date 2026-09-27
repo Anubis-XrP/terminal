@@ -160,7 +160,7 @@
         statusBox.innerText = "STREAMING DIRECT CLIENT-SIDE TELEMETRY...";
         statusBox.style.color = "var(--neon-blue)";
 
-        const promptText = `Return a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Use current values for September 2026. Avoid any backticks or markdown headers. Your output must instantly parse cleanly via standard web engines. Format explicitly to this schema:
+        const promptText = `Return ONLY a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Do not include any markdown backticks, do not include "json" text labels, and do not wrap the output in any conversational messages. Use current values for September 2026. Your output must instantly parse cleanly via standard web engines. Format explicitly to this schema:
         {
           "assetName": "Company Title Inc.",
           "livePrice": "$0.00",
