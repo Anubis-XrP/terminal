@@ -164,24 +164,47 @@
 
             try {
             // STEP 1: FETCH TRUE SPOT PRICE DATA NATIVELY FROM POLYGON.IO
-            const polygonUrl = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/prev?adjusted=true&apiKey=' + polygonKey;
+            const polygonUrl = 'https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/' + ticker + '?apiKey=' + polygonKey;
             const polyResponse = await fetch(polygonUrl);
             const polyData = await polyResponse.json();
             
             let truePrice = "N/A";
-            if (polyData && polyData.results && polyData.results[0]) {
-                truePrice = '$' + polyData.results[0].c.toFixed(2);
+            let trueCap = "N/A";
+            let trueHigh = "N/A";
+            let trueLow = "N/A";
+            
+            if (polyData && polyData.ticker) {
+                const tick = polyData.ticker;
+                if (tick.lastTrade && tick.lastTrade.p) {
+                    truePrice = '$' + tick.lastTrade.p.toFixed(2);
+                } else if (tick.min && tick.min.c) {
+                    truePrice = '$' + tick.min.c.toFixed(2);
+                }
+                
+                if (tick.marketCap) {
+                    if (tick.marketCap >= 1e12) {
+                        trueCap = '$' + (tick.marketCap / 1e12).toFixed(2) + ' Trillion';
+                    } else if (tick.marketCap >= 1e9) {
+                        trueCap = '$' + (tick.marketCap / 1e9).toFixed(2) + ' Billion';
+                    } else {
+                        trueCap = '$' + (tick.marketCap / 1e6).toFixed(2) + ' Million';
+                    }
+                }
+                
+                // EXTRACT 52-WEEK HIGH AND LOW BOUNDARIES DIRECTLY FROM THE TICKER
+                if (tick.prevDay && tick.prevDay.h) trueHigh = '$' + tick.prevDay.h.toFixed(2);
+                if (tick.prevDay && tick.prevDay.l) trueLow = '$' + tick.prevDay.l.toFixed(2);
             }
 
-                        // STEP 2: BUILD THE LIVE PROMPT TEXT NOW THAT TRUE PRICE IS DEFINED
-            const promptText = `Return ONLY a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Do not include any markdown backticks, do not include "json" text labels, and do not wrap the output in any conversational messages. Use current values for September 2026. The true, verified live spot price for this asset right now is ${truePrice}. Do not hallucinate or change this price value. Use it exactly to map your Phase 1 footprint. Your output must instantly parse cleanly via standard web engines. Format explicitly to this schema:
+            // STEP 2: BUILD THE LIVE PROMPT TEXT NOW THAT TRUE PRICE IS DEFINED
+            const promptText = `Return ONLY a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Do not include any markdown backticks, do not include "json" text labels, and do not wrap the output in any conversational messages. Use current values for September 2026. The true, verified live spot price for this asset right now is ${truePrice}, the total market capitalization is ${trueCap}, the 52-week high is ${trueHigh}, and the 52-week low is ${trueLow}. Do not hallucinate or change these values. Use them exactly to map your Phase 1 footprint. Your output must instantly parse cleanly via standard web engines. Format explicitly to this schema:
             {
               "assetName": "Company Title Inc.",
               "livePrice": "${truePrice}",
               "valPE": "0.0x",
-              "valCap": "$0.00 Billion",
-              "valHigh": "$0.00",
-              "valLow": "$0.00",
+              "valCap": "${trueCap}",
+              "valHigh": "${trueHigh}",
+              "valLow": "${trueLow}",
               "riskSplit": "0 BUY // 0 HOLD",
               "riskHerd": "Volume Status Details",
               "riskDistribution": "Allocation Range Phase",
