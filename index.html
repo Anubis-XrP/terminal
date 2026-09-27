@@ -198,8 +198,7 @@
         }`;
 
         try {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
     const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -215,9 +214,26 @@
             ]
         })
     });
+            
             const rawData = await response.json();
-            const textJson = rawData.candidates[0].content.parts[0].text.trim();
-            const cleanData = JSON.parse(textJson);
+
+if (!response.ok) {
+    console.error("Gemini API Error:", rawData);
+
+    throw new Error(
+        rawData?.error?.message ||
+        `Gemini API returned HTTP ${response.status}`
+    );
+}
+
+const textJson = rawData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+if (!textJson) {
+    console.error("Unexpected Gemini response:", rawData);
+    throw new Error("Gemini returned no usable text response.");
+}
+
+const cleanData = JSON.parse(textJson);
 
             document.getElementById('assetName').innerText = cleanData.assetName;
             document.getElementById('livePrice').innerText = cleanData.livePrice;
