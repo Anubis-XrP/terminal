@@ -61,7 +61,8 @@
     <!-- Secure Institutional Control Gate with RAM Visibility Block -->
     <div class="control-bar">
         <span style="font-weight: 700; letter-spacing: 1px; color: var(--neon-blue); font-size: 14px;">SRR MASTER TERMINAL v5.6 //</span>
-        <input type="password" id="gateKeyInput" class="key-input" value="" placeholder="🔑 ENTER GOOGLE API KEY...">
+                <input type="password" id="gateKeyInput" class="key-input" value="" placeholder="🔑 ENTER GOOGLE API KEY...">
+        <input type="password" id="polygonKeyInput" class="key-input" value="" placeholder="📈 ENTER POLYGON API KEY...">
         <input type="text" id="tickerInput" class="search-input" placeholder="SYMBOL..." value="NOW">
         <button onclick="executeSRRAudit()" class="execute-btn">Run Audit Diagnostics</button>
         <span id="terminalStatus" style="color: var(--text-muted); font-size: 12px; margin-left: auto; font-weight: 700;">SYSTEM IDLE</span>
@@ -150,9 +151,10 @@
     async function executeSRRAudit() {
         const ticker = document.getElementById('tickerInput').value.toUpperCase().trim();
         const googleKey = document.getElementById('gateKeyInput').value.trim();
+        const polygonKey = document.getElementById('polygonKeyInput').value.trim();
         if (!ticker) return;
-        if (!googleKey) {
-            alert("Security Notice: Please enter your Google AI Studio API key into the control bar box first.");
+        if (!googleKey || !polygonKey) {
+            alert("Security Notice: Please enter both your Google AI Studio API key and Polygon.io API key into the control bar boxes first.");
             return;
         }
 
@@ -160,7 +162,8 @@
         statusBox.innerText = "STREAMING DIRECT CLIENT-SIDE TELEMETRY...";
         statusBox.style.color = "var(--neon-blue)";
 
-        const promptText = `Return ONLY a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Do not include any markdown backticks, do not include "json" text labels, and do not wrap the output in any conversational messages. Use current values for September 2026. Your output must instantly parse cleanly via standard web engines. Format explicitly to this schema:
+        const promptText = `Return ONLY a raw, minified JSON object matching the requested investment risk metrics for the ticker "${ticker}". Do not include any markdown backticks, do not include "json" text labels, and do not wrap the output in any conversational messages. Use current values for September 2026. The true, verified live spot price for this asset right now is ${truePrice}. Do not hallucinate or change this price value. Use it exactly to map your Phase 1 footprint.
+. Format explicitly to this schema:
         {
           "assetName": "Company Title Inc.",
           "livePrice": "$0.00",
@@ -197,23 +200,34 @@
           "logVerdictClass": "badge-clear"
         }`;
 
-        try {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": googleKey
-        },
-        body: JSON.stringify({
-            contents: [
-                {
-                    role: "user",
-                    parts: [{ text: promptText }]
-                }
-            ]
-        })
-    });
+                        try {
+            // STEP 1: FETCH TRUE SPOT PRICE DATA NATIVELY FROM POLYGON.IO
+            const polygonUrl = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/prev?adjusted=true&apiKey=' + polygonKey;
+            const polyResponse = await fetch(polygonUrl);
+            const polyData = await polyResponse.json();
+            
+            let truePrice = "N/A";
+            if (polyData && polyData.results && polyData.results[0]) {
+                truePrice = '$' + polyData.results[0].c.toFixed(2);
+            }
+
+            // STEP 2: RE-ROUTE THE LIVE VALUE INTENT TO GOOGLE'S AI ENGINE
+            const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": googleKey
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [{ text: promptText }]
+                        }
+                    ]
+                })
+            });
             
             const rawData = await response.json();
 
